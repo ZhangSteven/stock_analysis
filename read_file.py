@@ -18,7 +18,7 @@ def read_file(filename, starting_row=0):
 	dates = []
 	indices = initialize_indices(fields)
 	while row < ws.nrows:
-		if is_blank_line(ws, row):
+		if is_empty_cell(ws, row, 0):
 			break
 
 		dates.append(xldate_as_datetime(ws.cell_value(row, 0), 0))
@@ -53,15 +53,6 @@ def read_data_fields(ws, row):
 		column = column + 1
 
 	return fields
-
-
-
-def is_blank_line(ws, row):
-	for i in range(5):
-		if not is_empty_cell(ws, row, i):
-			return False
-
-	return True
 
 
 

@@ -4,7 +4,9 @@
 #
 # 
 from scipy.stats.stats import pearsonr
-from stock_analysis.utility import get_current_directory
+from stock_analysis.utility import get_current_directory, get_output_directory
+from stock_analysis.read_file import read_file
+import os, csv
 
 class InconsistentLength(Exception):
 	pass
@@ -14,23 +16,66 @@ logger = logging.getLogger(__name__)
 
 
 
-def moving_index_correlation(move_length, dates, index1, index2):
+def moving_indices_return_correlation(move_length, dates, indices):
 	"""
-	Compute the moving correlation between two indices.
+	Compute the move return correlation among a group of indices.
 	"""
-	skip_zeros = max(count_leading_zeros(index1), count_leading_zeros(index2))
-	return dates[move_length+skip_zeros-1:], \
-			moving_correlation(move_length, index1[skip_zeros:], index2[skip_zeros:])
+	dates, index_returns = get_index_returns(dates, indices)
+	index_names = list(index_returns.keys())
+	correlations = {}
+	for i in range(len(index_names)):
+		for j in range(i+1, len(index_names)):
+			correlations[index_names[i]+'-'+index_names[j]] = \
+				moving_correlation(move_length, index_returns[index_names[i]], index_returns[index_names[j]])
+
+	return dates[move_length-1:], correlations
+
+
+
+# def moving_index_return_correlation(move_length, dates, index1, index2):
+# 	"""
+# 	Compute the moving correlation between two indices.
+# 	"""
+# 	dates, index1_return, index2_return = get_index_returns(dates, index1, index2)
+# 	return dates[move_length-1:], \
+# 			moving_correlation(move_length, index1_return, index2_return)
+
+
+
+def get_index_returns(dates, indices):
+	"""
+	Computer the index return for each date.
+	"""
+	leading_zeros = []
+	for index_name in indices:
+		leading_zeros.append(count_leading_zeros(indices[index_name]))
+
+	skip_zeros = max(leading_zeros)
+
+	index_returns = {}
+	for index_name in indices:
+		index_returns[index_name] = get_return_percentage(indices[index_name][skip_zeros:])
+
+	return dates[1+skip_zeros:], index_returns
+
+
+
+def get_return_percentage(index):
+	r = []
+	for i in range(1,len(index)):
+		r.append((index[i]/index[i-1] - 1.0)*100.0)
+
+	return r
 
 
 
 def count_leading_zeros(index):
 	"""
-	The data file uses zero to represent a missing value of an index.
-	So we count the number of leading zeros of that index.
+	For index, it uses zero to represent a missing value, for return value, it uses
+	-100 to represent a missing value.
 	"""
 	for i in range(len(index)):
-		if index[i] != 0:
+		if not index[i] in [0, -100]:
 			break
 
 	return i
@@ -68,13 +113,27 @@ def get_correlation(s1, s2):
 
 
 
+def write_csv(dates, correlation, name, output_dir=get_output_directory()):
+	file = os.path.join(output_dir, name+'.csv')
+	with open(file, 'w', newline='') as csvfile:
+		file_writer = csv.writer(csvfile, delimiter=',')
+		file_writer.writerow(['date', 'coe', 'p_value'])
+		for i in range(len(dates)):
+			file_writer.writerow([date_to_string(dates[i]), correlation[i][0], correlation[i][1]])
+
+
+
+def date_to_string(dt):
+	return str(dt.year) + '-' + str(dt.month) + '-' + str(dt.day)
+
+
+
 if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	# import os
-	# data_file = os.path.join(get_current_directory(), 'data files', 'A-share-index.xlsx')
-	# dates, indices = read_file(data_file)
-	# write_csv(dates[20:], moving_correlation(20, indices['CSI300'], indices['ZhongZheng 500']))
-
+	file = os.path.join(get_current_directory(), 'data files', 'A-share-index.xlsx')
+	dates, indices = read_file(file)
+	dates2, correlation = moving_index_return_correlation(20, dates, indices['CSI300'], indices['Chuang Ye Ban'])
+	write_csv(dates2, correlation, 'csi300-chuangyeban')
 

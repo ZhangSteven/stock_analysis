@@ -41,6 +41,10 @@ if not 'config' in globals():
 
 
 
-# def get_mail_timeout():
-# 	global config
-# 	return float(config['email']['timeout'])
+def get_output_directory():
+	global config
+	d = config['directory']['output']
+	if d == '':
+		return get_current_directory()
+	else:
+		return d
