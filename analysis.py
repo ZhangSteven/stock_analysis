@@ -4,6 +4,7 @@
 #
 # 
 from scipy.stats.stats import pearsonr
+from statistics import mean, median, stdev
 from stock_analysis.utility import get_current_directory, get_output_directory
 from stock_analysis.read_file import read_file
 import os, csv
@@ -31,6 +32,20 @@ def moving_indices_return_correlation(move_length, dates, indices):
 	return dates[move_length-1:], correlations
 
 
+
+def get_correlation_stats(correlations, num_dates):
+	"""
+	Compute the mean, median and standard deviation of the correlation
+	coefficients on each date.
+	"""
+	stats = []
+	for i in range(num_dates):
+		coe_list = [correlations[name][i][0] for name in correlations]
+		stats.append((mean(coe_list), median(coe_list), stdev(coe_list)))
+	
+	return stats
+
+	
 
 # def moving_index_return_correlation(move_length, dates, index1, index2):
 # 	"""
@@ -113,13 +128,20 @@ def get_correlation(s1, s2):
 
 
 
-def write_csv(dates, correlation, name, output_dir=get_output_directory()):
+def write_csv(dates, correlations, stats, name, output_dir=get_output_directory()):
 	file = os.path.join(output_dir, name+'.csv')
 	with open(file, 'w', newline='') as csvfile:
 		file_writer = csv.writer(csvfile, delimiter=',')
-		file_writer.writerow(['date', 'coe', 'p_value'])
+
+		cor_names = [name for name in correlations]
+		file_writer.writerow(['date'] + cor_names + ['mean', 'median', 'stdev'])
 		for i in range(len(dates)):
-			file_writer.writerow([date_to_string(dates[i]), correlation[i][0], correlation[i][1]])
+			file_writer.writerow([date_to_string(dates[i])] + \
+									[correlations[name][i][0] for name in cor_names] + \
+									[stats[i][0], stats[i][1], stats[i][2]])
+		# end of for loop
+
+	# end of with
 
 
 
@@ -132,8 +154,8 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	file = os.path.join(get_current_directory(), 'data files', 'A-share-index.xlsx')
+	file = os.path.join(get_current_directory(), 'data files', 'ZhongZheng500 industry index.xlsx')
 	dates, indices = read_file(file)
-	dates2, correlation = moving_index_return_correlation(20, dates, indices['CSI300'], indices['Chuang Ye Ban'])
-	write_csv(dates2, correlation, 'csi300-chuangyeban')
-
+	dates2, correlations = moving_indices_return_correlation(60, dates, indices)
+	stats = get_correlation_stats(correlations, len(dates2))
+	write_csv(dates2, correlations, stats, 'coe_A_shares')

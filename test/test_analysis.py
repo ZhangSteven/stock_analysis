@@ -6,7 +6,8 @@ import unittest2
 from datetime import datetime
 from os.path import join
 from stock_analysis.analysis import moving_correlation, get_index_returns, \
-                                    moving_indices_return_correlation
+                                    moving_indices_return_correlation, \
+                                    get_correlation_stats, write_csv
 from stock_analysis.read_file import read_file
 from stock_analysis.utility import get_current_directory
 
@@ -98,11 +99,19 @@ class TestAnalysis(unittest2.TestCase):
         self.assertAlmostEqual(chuangye_csi300[3][0], -0.646945593)
 
 
-    # def test_write_csv(self):
-    #     file = join(get_current_directory(), 'samples', 'index_sample1.xlsx')
-    #     dates, indices = read_file(file)
-    #     dates2, correlation = moving_index_return_correlation(5, dates, indices['CSI300'], indices['ZhongZheng 500'])
-    #     write_csv(dates2, correlation, 'csi300-zhongzheng500', join(get_current_directory(), 'samples'))
 
-    #     dates3, correlation = moving_index_return_correlation(5, dates, indices['ZhongZheng 500'], indices['Chuang Ye Ban'])
-    #     write_csv(dates3, correlation, 'zhongzheng500-chuangyeban', join(get_current_directory(), 'samples'))
+    def test_get_correlation_stats(self):
+        file = join(get_current_directory(), 'samples', 'index_sample1.xlsx')
+        dates, indices = read_file(file)
+        dates2, correlations = moving_indices_return_correlation(5, dates, indices)
+        stats = get_correlation_stats(correlations, len(dates2))
+        self.assertEqual(len(stats), 4)
+        self.assertAlmostEqual(stats[0][0], 0.546437932)
+        self.assertAlmostEqual(stats[0][1], 0.735154396)
+        self.assertAlmostEqual(stats[0][2], 0.348925212)
+
+        self.assertAlmostEqual(stats[3][0], -0.107625582)
+        self.assertAlmostEqual(stats[3][1], -0.646945593)
+        self.assertAlmostEqual(stats[3][2], 0.953361773)
+
+        write_csv(dates2, correlations, stats, 'coe_sample', join(get_current_directory(), 'samples'))
